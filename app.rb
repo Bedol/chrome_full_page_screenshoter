@@ -3,7 +3,7 @@ require 'selenium-webdriver'
 require 'rmagick'
 
 
-CHROME_DRIVER = File.join(File.absolute_path('.'), 'chromedriver')
+CHROME_DRIVER = File.join(File.absolute_path('./lib'), 'chromedriver')
 
 
 class ChromeWorker
@@ -51,20 +51,21 @@ class ChromeWorker
     images_list = ["tmp-0.png"]
     scrolls = calculate_scrolls(body_height)
     height = screen_height
-    scrolls.each do |i|
+    (1..scrolls).each do |i|
       scroll(0, height)
-      sleep 1
+      sleep 0.5
       screenshot("tmp-#{i}")
       images_list << "tmp-#{i}.png"
       height += screen_height
     end
+    crop_last_image(images_list, calculate_left_pixels)
     join_images(images_list)
   end
 
 
   def join_images(images)
-    list = Magick::ImageList.new(*images)
-    list.append(true).write("page_screenshot.png")
+    image_list = Magick::ImageList.new(*images)
+    image_list.append(true).write("page_screenshot.png")
   end
 
 
@@ -74,12 +75,24 @@ class ChromeWorker
 
 
   def calculate_scrolls(body_height)
-    (1..(body_height.to_i/screen_height)).to_a
+    body_height.to_i/screen_height
+  end
+
+
+  def calculate_left_pixels
+    screen_height.to_i - (body_height.to_i - (screen_height.to_i * calculate_scrolls(body_height)))
   end
 
 
   def screenshot(file_name)
     @driver.save_screenshot("#{file_name}.png")
+  end
+
+
+  def crop_last_image(images, pixels)
+    image = Magick::ImageList.new(images.last)
+    image.crop!(0, pixels, 0, 0)
+    image.write(images.last)
   end
 
 
